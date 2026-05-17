@@ -83,6 +83,36 @@ def test_send_available_handles_none_miles():
     assert "check site" in payload["text"]
 
 
+def test_send_available_includes_booking_link():
+    config = _make_config()
+    award = AvailableAward(
+        date=date(2026, 7, 22),
+        route=Route("CGO", "JFK", "economy"),
+        miles_required=None,
+    )
+    with patch("notifier.requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
+        notifier.send_available(config, award)
+    text = mock_post.call_args.kwargs["json"]["text"]
+    assert "IBEFacade" in text
+    assert "ORIGIN%5B1%5D=CGO" in text
+    assert "DESTINATION%5B1%5D=JFK" in text
+    assert "DEPARTUREDATE%5B1%5D=20260722" in text
+    assert "CABINCLASS=Y" in text
+
+
+def test_booking_link_uses_correct_cabin_class():
+    from notifier import _booking_url
+    eco = AvailableAward(date=date(2026, 7, 1), route=Route("CGO", "JFK", "economy"), miles_required=None)
+    bus = AvailableAward(date=date(2026, 7, 1), route=Route("CGO", "JFK", "business"), miles_required=None)
+    fst = AvailableAward(date=date(2026, 7, 1), route=Route("CGO", "JFK", "first"), miles_required=None)
+    assert "CABINCLASS=Y" in _booking_url(eco)
+    assert "CABINCLASS=C" in _booking_url(bus)
+    assert "CABINCLASS=F" in _booking_url(fst)
+
+
 def test_send_available_logs_error_on_failure():
     config = _make_config()
     award = AvailableAward(

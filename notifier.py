@@ -9,7 +9,31 @@ from config_loader import Config, Route
 logger = logging.getLogger(__name__)
 
 _TELEGRAM_URL = "https://api.telegram.org/bot{token}/sendMessage"
-_AWARD_URL = "https://www.cathaypacific.com/cx/en_US.html"
+
+_CABIN_CLASS = {"economy": "Y", "business": "C", "first": "F"}
+
+_BOOKING_URL_TPL = (
+    "https://api.cathaypacific.com/redibe/IBEFacade"
+    "?ACTION=RED_AWARD_SEARCH"
+    "&ORIGIN%5B1%5D={origin}"
+    "&DESTINATION%5B1%5D={dest}"
+    "&DEPARTUREDATE%5B1%5D={date}"
+    "&ENTRYPOINT=https%3A%2F%2Fwww.cathaypacific.com%2Fcx%2Fen_US.html"
+    "&ENTRYLANGUAGE=en&ENTRYCOUNTRY=US"
+    "&RETURNURL=https%3A%2F%2Fwww.cathaypacific.com%2Fcx%2Fen_US.html"
+    "&ERRORURL=https%3A%2F%2Fwww.cathaypacific.com%2Fcx%2Fen_US.handler.html"
+    "&LOGINURL=https%3A%2F%2Fwww.cathaypacific.com%2Fcx%2Fen_US%2Fsign-in.html"
+    "&CABINCLASS={cabin}&ADULT=1&CHILD=0&DISCOUNTCODE=&FLEXIBLEDATE=false&BRAND=CX"
+)
+
+
+def _booking_url(award: AvailableAward) -> str:
+    return _BOOKING_URL_TPL.format(
+        origin=award.route.origin,
+        dest=award.route.destination,
+        date=award.date.strftime("%Y%m%d"),
+        cabin=_CABIN_CLASS.get(award.route.cabin.lower(), "Y"),
+    )
 
 
 def send_available(config: Config, award: AvailableAward) -> None:
@@ -21,7 +45,7 @@ def send_available(config: Config, award: AvailableAward) -> None:
         f"Date: {award.date.strftime('%Y-%m-%d')}\n"
         f"Cabin: {route.cabin.title()}\n"
         f"Miles: {miles}\n"
-        f"{_AWARD_URL}"
+        f"{_booking_url(award)}"
     )
     _send(config, text)
 
