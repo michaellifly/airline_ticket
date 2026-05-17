@@ -80,7 +80,7 @@ def test_send_available_handles_none_miles():
         mock_post.return_value = mock_resp
         notifier.send_available(config, award)
     payload = mock_post.call_args.kwargs["json"]
-    assert "unknown" in payload["text"]
+    assert "check site" in payload["text"]
 
 
 def test_send_available_logs_error_on_failure():

@@ -1,90 +1,163 @@
 from datetime import date
-from unittest.mock import MagicMock, patch
-from config_loader import Route
-from checker import _date_range, _parse_miles, AvailableAward
+from unittest.mock import patch, MagicMock, call
+import requests
+
+from config_loader import Route, Config
+from checker import check_all, _check_route, _fetch_available_dates, AvailableAward, CABIN_MAP
 
 
-def test_date_range_inclusive():
-    result = _date_range(date(2026, 7, 1), date(2026, 7, 3))
-    assert result == [date(2026, 7, 1), date(2026, 7, 2), date(2026, 7, 3)]
+def _make_config(**overrides):
+    defaults = dict(
+        routes=[Route("CGO", "JFK", "economy")],
+        date_start=date(2026, 7, 1),
+        date_end=date(2026, 7, 31),
+        interval_hours=6,
+        notify_on_empty=True,
+        telegram_bot_token="tok",
+        telegram_chat_id="123",
+        headless=True,
+    )
+    defaults.update(overrides)
+    return Config(**defaults)
 
 
-def test_date_range_single_day():
-    result = _date_range(date(2026, 7, 1), date(2026, 7, 1))
-    assert result == [date(2026, 7, 1)]
+def _api_response(entries):
+    mock = MagicMock()
+    mock.json.return_value = {"availabilities": {"std": entries, "pt1": [], "pt2": []}}
+    mock.raise_for_status.return_value = None
+    return mock
 
 
-def test_parse_miles_plain_number():
-    assert _parse_miles("35000 miles") == 35000
+# --- cabin mapping ---
+
+def test_cabin_map_covers_all_cabins():
+    assert CABIN_MAP["economy"] == "eco"
+    assert CABIN_MAP["business"] == "bus"
+    assert CABIN_MAP["first"] == "fir"
 
 
-def test_parse_miles_with_comma():
-    assert _parse_miles("35,000 miles") == 35000
+# --- direct route ---
+
+def test_direct_route_returns_awards_for_available_dates():
+    route = Route("HKG", "JFK", "economy")
+    entries = [
+        {"date": "20260701", "availability": "H"},
+        {"date": "20260702", "availability": "NA"},
+        {"date": "20260703", "availability": "L"},
+    ]
+    with patch("checker.requests.get", return_value=_api_response(entries)):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+
+    assert len(results) == 2
+    assert results[0].date == date(2026, 7, 1)
+    assert results[0].route == route
+    assert results[0].miles_required is None
+    assert results[1].date == date(2026, 7, 3)
 
 
-def test_parse_miles_k_suffix():
-    assert _parse_miles("35K miles") == 35000
+def test_direct_route_returns_empty_when_all_na():
+    route = Route("HKG", "JFK", "economy")
+    entries = [{"date": "20260701", "availability": "NA"}] * 31
+    with patch("checker.requests.get", return_value=_api_response(entries)):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert results == []
 
 
-def test_parse_miles_lowercase_k():
-    assert _parse_miles("35k") == 35000
+def test_direct_route_returns_empty_on_timeout():
+    route = Route("HKG", "JFK", "economy")
+    with patch("checker.requests.get", side_effect=requests.Timeout):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert results == []
 
 
-def test_parse_miles_unrecognised_returns_none():
-    assert _parse_miles("Not available") is None
-    assert _parse_miles("") is None
+def test_direct_route_returns_empty_on_http_error():
+    route = Route("HKG", "JFK", "economy")
+    mock = MagicMock()
+    mock.raise_for_status.side_effect = requests.HTTPError("503")
+    with patch("checker.requests.get", return_value=mock):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert results == []
 
 
-def test_check_one_returns_empty_on_timeout():
-    from playwright.sync_api import TimeoutError as PlaywrightTimeoutError
-    import checker
-
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-    mock_page.goto.side_effect = PlaywrightTimeoutError("timeout")
-
-    route = Route("CGO", "JFK", "economy")
-    result = checker._check_one(mock_browser, route, date(2026, 7, 1))
-    assert result == []
-    mock_page.close.assert_called_once()
+def test_direct_route_uses_correct_cabin_code():
+    route = Route("HKG", "JFK", "business")
+    with patch("checker.requests.get", return_value=_api_response([])) as mock_get:
+        _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert "bus" in mock_get.call_args[0][0]
 
 
-def test_check_one_returns_empty_on_captcha():
-    import checker
-
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-    mock_page.goto.return_value = None
-
-    route = Route("CGO", "JFK", "economy")
-    with patch.object(checker, "_dismiss_cookie_banner"), \
-         patch.object(checker, "_fill_search_form"), \
-         patch.object(checker, "_submit_search"), \
-         patch.object(checker, "_has_captcha", return_value=True):
-        result = checker._check_one(mock_browser, route, date(2026, 7, 1))
-
-    assert result == []
-    mock_page.close.assert_called_once()
+def test_direct_route_builds_url_with_correct_dates():
+    route = Route("HKG", "JFK", "economy")
+    with patch("checker.requests.get", return_value=_api_response([])) as mock_get:
+        _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    url = mock_get.call_args[0][0]
+    assert "20260701" in url
+    assert "20260731" in url
 
 
-def test_check_one_returns_empty_on_post_search_captcha():
-    import checker
+# --- connecting route (via) ---
 
-    mock_browser = MagicMock()
-    mock_page = MagicMock()
-    mock_browser.new_page.return_value = mock_page
-    mock_page.goto.return_value = None
+def test_connecting_route_returns_dates_where_both_legs_available():
+    route = Route("CGO", "JFK", "economy", via="HKG")
+    leg1 = [
+        {"date": "20260722", "availability": "H"},
+        {"date": "20260723", "availability": "H"},
+        {"date": "20260724", "availability": "NA"},
+    ]
+    leg2 = [
+        {"date": "20260722", "availability": "H"},
+        {"date": "20260723", "availability": "NA"},
+        {"date": "20260724", "availability": "H"},
+    ]
+    responses = [_api_response(leg1), _api_response(leg2)]
+    with patch("checker.requests.get", side_effect=responses):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
 
-    route = Route("CGO", "JFK", "economy")
-    # First call (pre-form) returns False, second call (post-search) returns True
-    captcha_side_effects = [False, True]
-    with patch.object(checker, "_dismiss_cookie_banner"), \
-         patch.object(checker, "_fill_search_form"), \
-         patch.object(checker, "_submit_search"), \
-         patch.object(checker, "_has_captcha", side_effect=captcha_side_effects):
-        result = checker._check_one(mock_browser, route, date(2026, 7, 1))
+    assert len(results) == 1
+    assert results[0].date == date(2026, 7, 22)
+    assert results[0].route == route
 
-    assert result == []
-    mock_page.close.assert_called_once()
+
+def test_connecting_route_returns_empty_when_no_overlap():
+    route = Route("CGO", "JFK", "economy", via="HKG")
+    leg1 = [{"date": "20260722", "availability": "H"}]
+    leg2 = [{"date": "20260723", "availability": "H"}]
+    with patch("checker.requests.get", side_effect=[_api_response(leg1), _api_response(leg2)]):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert results == []
+
+
+def test_connecting_route_returns_empty_when_leg1_fails():
+    route = Route("CGO", "JFK", "economy", via="HKG")
+    with patch("checker.requests.get", side_effect=requests.Timeout):
+        results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert results == []
+
+
+def test_connecting_route_makes_two_api_calls():
+    route = Route("CGO", "JFK", "economy", via="HKG")
+    with patch("checker.requests.get", return_value=_api_response([])) as mock_get:
+        _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
+    assert mock_get.call_count == 2
+
+
+# --- check_all ---
+
+def test_check_all_aggregates_results_across_routes():
+    routes = [Route("HKG", "JFK", "economy"), Route("HKG", "LHR", "economy")]
+    config = _make_config(routes=routes)
+    entries = [{"date": "20260715", "availability": "H"}]
+
+    with patch("checker.requests.get", return_value=_api_response(entries)):
+        results = check_all(config)
+
+    assert len(results) == 2
+    assert results[0].route == routes[0]
+    assert results[1].route == routes[1]
+
+
+def test_check_all_returns_empty_when_no_availability():
+    config = _make_config()
+    with patch("checker.requests.get", return_value=_api_response([])):
+        results = check_all(config)
+    assert results == []

@@ -9,17 +9,19 @@ from config_loader import Config, Route
 logger = logging.getLogger(__name__)
 
 _TELEGRAM_URL = "https://api.telegram.org/bot{token}/sendMessage"
-_AWARD_URL = "https://www.cathaypacific.com/cx/en_US/book-a-trip/redeem-miles.html"
+_AWARD_URL = "https://www.cathaypacific.com/cx/en_US.html"
 
 
 def send_available(config: Config, award: AvailableAward) -> None:
-    miles = f"{award.miles_required:,}" if award.miles_required is not None else "unknown"
+    route = award.route
+    via = f" via {route.via}" if route.via else ""
+    miles = f"{award.miles_required:,}" if award.miles_required is not None else "check site"
     text = (
-        f"✈️ Award Space Found — {award.route.origin} → {award.route.destination}\n"
-        f"\U0001f4c5 Date: {award.date.strftime('%Y-%m-%d')}\n"
-        f"\U0001f4ba Cabin: {award.route.cabin.title()}\n"
-        f"\U0001f3ab Miles required: {miles}\n"
-        f"\U0001f517 {_AWARD_URL}"
+        f"Award Space Found - {route.origin}{via} -> {route.destination}\n"
+        f"Date: {award.date.strftime('%Y-%m-%d')}\n"
+        f"Cabin: {route.cabin.title()}\n"
+        f"Miles: {miles}\n"
+        f"{_AWARD_URL}"
     )
     _send(config, text)
 

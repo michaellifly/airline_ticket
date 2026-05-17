@@ -1,7 +1,7 @@
 import yaml
 from dataclasses import dataclass
 from datetime import date
-from typing import List
+from typing import List, Optional
 
 
 @dataclass
@@ -9,6 +9,7 @@ class Route:
     origin: str
     destination: str
     cabin: str
+    via: Optional[str] = None
 
 
 @dataclass
@@ -21,6 +22,8 @@ class Config:
     telegram_bot_token: str
     telegram_chat_id: str
     headless: bool
+    cathay_phone: Optional[str] = None
+    cathay_password: Optional[str] = None
 
 
 def load_config(path: str = "config.yaml") -> Config:
@@ -40,6 +43,7 @@ def load_config(path: str = "config.yaml") -> Config:
                 origin=r["origin"],
                 destination=r["destination"],
                 cabin=r["cabin"],
+                via=r.get("via"),
             )
             for r in raw["routes"]
         ]
@@ -56,6 +60,7 @@ def load_config(path: str = "config.yaml") -> Config:
         if interval_hours <= 0:
             raise SystemExit("ERROR: schedule.interval_hours must be a positive integer.")
 
+        cathay = raw.get("cathay") or {}
         return Config(
             routes=routes,
             date_start=date_start,
@@ -65,6 +70,8 @@ def load_config(path: str = "config.yaml") -> Config:
             telegram_bot_token=str(raw["telegram"]["bot_token"]),
             telegram_chat_id=str(raw["telegram"]["chat_id"]),
             headless=bool(raw.get("playwright", {}).get("headless", True)),
+            cathay_phone=str(cathay["phone"]) if cathay.get("phone") else None,
+            cathay_password=str(cathay["password"]) if cathay.get("password") else None,
         )
     except (KeyError, ValueError, TypeError) as e:
         raise SystemExit(f"ERROR: Invalid config.yaml: {e}")
