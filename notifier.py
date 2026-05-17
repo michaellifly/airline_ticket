@@ -1,3 +1,4 @@
+import html
 import logging
 from datetime import date
 
@@ -40,14 +41,19 @@ def send_available(config: Config, award: AvailableAward) -> None:
     route = award.route
     via = f" via {route.via}" if route.via else ""
     miles = f"{award.miles_required:,}" if award.miles_required is not None else "check site"
+    link_label = (
+        f"Book {route.origin}{via} → {route.destination} "
+        f"· {award.date.strftime('%b %d')} ({route.cabin.title()})"
+    )
     text = (
-        f"Award Space Found - {route.origin}{via} -> {route.destination}\n"
-        f"Date: {award.date.strftime('%Y-%m-%d')}\n"
+        f"<b>Award Space Found</b> — "
+        f"{html.escape(route.origin)}{html.escape(via)} → {html.escape(route.destination)}\n"
+        f"Date: {award.date.strftime('%Y-%m-%d (%A)')}\n"
         f"Cabin: {route.cabin.title()}\n"
         f"Miles: {miles}\n"
-        f"{_booking_url(award)}"
+        f'<a href="{_booking_url(award)}">{html.escape(link_label)}</a>'
     )
-    _send(config, text)
+    _send(config, text, parse_mode="HTML")
 
 
 def send_empty(config: Config, route: Route, date_start: date, date_end: date, interval_hours: int) -> None:
@@ -63,14 +69,13 @@ def send_empty(config: Config, route: Route, date_start: date, date_end: date, i
     _send(config, text)
 
 
-def _send(config: Config, text: str) -> None:
+def _send(config: Config, text: str, parse_mode: str = "") -> None:
     url = _TELEGRAM_URL.format(token=config.telegram_bot_token)
+    payload: dict = {"chat_id": config.telegram_chat_id, "text": text}
+    if parse_mode:
+        payload["parse_mode"] = parse_mode
     try:
-        resp = requests.post(
-            url,
-            json={"chat_id": config.telegram_chat_id, "text": text},
-            timeout=10,
-        )
+        resp = requests.post(url, json=payload, timeout=10)
         resp.raise_for_status()
         logger.info("Telegram message sent.")
     except requests.HTTPError as e:

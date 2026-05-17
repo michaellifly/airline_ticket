@@ -36,10 +36,41 @@ def test_send_available_posts_to_telegram():
     mock_resp.raise_for_status.assert_called_once()
     payload = mock_post.call_args.kwargs["json"]
     assert payload["chat_id"] == "123"
+    assert payload["parse_mode"] == "HTML"
     assert "CGO" in payload["text"]
     assert "JFK" in payload["text"]
     assert "35,000" in payload["text"]
     assert "2026-07-15" in payload["text"]
+
+
+def test_send_available_link_label_contains_route_and_date():
+    config = _make_config()
+    award = AvailableAward(
+        date=date(2026, 7, 15),
+        route=Route("CGO", "JFK", "economy"),
+        miles_required=None,
+    )
+    with patch("notifier.requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
+        notifier.send_available(config, award)
+    text = mock_post.call_args.kwargs["json"]["text"]
+    # Link text (<a>...</a>) should identify the specific flight, not be generic
+    assert "Jul 15" in text
+    assert "<a href=" in text
+
+
+def test_send_empty_does_not_set_parse_mode():
+    config = _make_config(notify_on_empty=True)
+    route = Route("CGO", "JFK", "economy")
+    with patch("notifier.requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
+        notifier.send_empty(config, route, date(2026, 7, 1), date(2026, 7, 31), 6)
+    payload = mock_post.call_args.kwargs["json"]
+    assert "parse_mode" not in payload
 
 
 def test_send_empty_posts_when_notify_on_empty_true():
