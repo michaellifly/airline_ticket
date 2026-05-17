@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 # Availability codes that mean seats are available
 AVAILABLE_CODES = {"H", "L", "M"}  # High / Low / Medium
 
-API_URL = "https://api.cathaypacific.com/afr/search/availability/en.{dest}.{origin}.{cabin}.CX.{adults}.{start}.{end}.json"
+API_URL = "https://api.cathaypacific.com/afr/search/availability/en.{origin}.{dest}.{cabin}.CX.{adults}.{start}.{end}.json"
 
 CABIN_MAP = {"economy": "eco", "business": "bus", "first": "fir"}
 
@@ -78,8 +78,8 @@ def _fetch_available_dates(origin: str, destination: str, cabin: str,
                            date_start: date, date_end: date) -> Optional[set]:
     cabin_code = CABIN_MAP.get(cabin.lower(), "eco")
     url = API_URL.format(
-        dest=destination,
         origin=origin,
+        dest=destination,
         cabin=cabin_code,
         adults=1,
         start=date_start.strftime("%Y%m%d"),
