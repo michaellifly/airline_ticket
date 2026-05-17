@@ -58,3 +58,26 @@ def test_headless_defaults_true(tmp_path):
     cfg_file.write_text(yaml_without_playwright)
     config = load_config(str(cfg_file))
     assert config.headless is True
+
+def test_empty_config_file_exits(tmp_path):
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text("")
+    with pytest.raises(SystemExit, match="empty"):
+        load_config(str(cfg_file))
+
+def test_date_end_before_date_start_exits(tmp_path):
+    bad_yaml = VALID_YAML.replace(
+        'start: "2026-07-01"\n  end: "2026-07-31"',
+        'start: "2026-07-31"\n  end: "2026-07-01"'
+    )
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(bad_yaml)
+    with pytest.raises(SystemExit, match="must not be before"):
+        load_config(str(cfg_file))
+
+def test_zero_interval_hours_exits(tmp_path):
+    bad_yaml = VALID_YAML.replace("interval_hours: 6", "interval_hours: 0")
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(bad_yaml)
+    with pytest.raises(SystemExit, match="positive integer"):
+        load_config(str(cfg_file))

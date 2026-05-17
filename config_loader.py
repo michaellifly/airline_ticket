@@ -30,6 +30,10 @@ def load_config(path: str = "config.yaml") -> Config:
     except FileNotFoundError:
         raise SystemExit(f"ERROR: config.yaml not found at '{path}'. "
                          "Copy config.yaml.example to config.yaml and fill in your values.")
+
+    if raw is None:
+        raise SystemExit(f"ERROR: config.yaml at '{path}' is empty.")
+
     try:
         routes = [
             Route(
@@ -39,11 +43,24 @@ def load_config(path: str = "config.yaml") -> Config:
             )
             for r in raw["routes"]
         ]
+        date_start = date.fromisoformat(raw["dates"]["start"])
+        date_end = date.fromisoformat(raw["dates"]["end"])
+
+        if date_end < date_start:
+            raise SystemExit(
+                f"ERROR: dates.end ({date_end}) must not be before dates.start ({date_start})."
+            )
+
+        interval_hours = int(raw["schedule"]["interval_hours"])
+
+        if interval_hours <= 0:
+            raise SystemExit("ERROR: schedule.interval_hours must be a positive integer.")
+
         return Config(
             routes=routes,
-            date_start=date.fromisoformat(raw["dates"]["start"]),
-            date_end=date.fromisoformat(raw["dates"]["end"]),
-            interval_hours=int(raw["schedule"]["interval_hours"]),
+            date_start=date_start,
+            date_end=date_end,
+            interval_hours=interval_hours,
             notify_on_empty=bool(raw.get("notify_on_empty", True)),
             telegram_bot_token=str(raw["telegram"]["bot_token"]),
             telegram_chat_id=str(raw["telegram"]["chat_id"]),
