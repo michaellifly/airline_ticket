@@ -45,7 +45,7 @@ def check_all(config: Config) -> List[AvailableAward]:
         try:
             for route in config.routes:
                 for d in dates:
-                    awards = _check_one(browser, route, d, config.headless)
+                    awards = _check_one(browser, route, d)
                     results.extend(awards)
                     time.sleep(2)  # polite delay between requests
         finally:
@@ -62,7 +62,7 @@ def _date_range(start: date, end: date) -> List[date]:
     return result
 
 
-def _check_one(browser, route: Route, travel_date: date, headless: bool) -> List[AvailableAward]:
+def _check_one(browser, route: Route, travel_date: date) -> List[AvailableAward]:
     page = browser.new_page()
     try:
         logger.info("Checking %s->%s on %s", route.origin, route.destination, travel_date)
@@ -112,11 +112,13 @@ def _fill_search_form(page, route: Route, travel_date: date) -> None:
 
     origin_input = page.locator(SELECTORS["origin_input"]).first
     origin_input.fill(route.origin)
-    page.locator(SELECTORS["origin_option"].format(code=route.origin)).first.click(timeout=8000)
+    page.wait_for_selector(SELECTORS["origin_option"].format(code=route.origin), timeout=8000)
+    page.locator(SELECTORS["origin_option"].format(code=route.origin)).first.click()
 
     dest_input = page.locator(SELECTORS["destination_input"]).first
     dest_input.fill(route.destination)
-    page.locator(SELECTORS["destination_option"].format(code=route.destination)).first.click(timeout=8000)
+    page.wait_for_selector(SELECTORS["destination_option"].format(code=route.destination), timeout=8000)
+    page.locator(SELECTORS["destination_option"].format(code=route.destination)).first.click()
 
     date_input = page.locator(SELECTORS["date_input"]).first
     date_input.fill(travel_date.strftime("%d/%m/%Y"))
@@ -145,7 +147,8 @@ def _parse_results(page, route: Route, travel_date: date) -> List[AvailableAward
             miles = _parse_miles(miles_text)
             if miles is not None:
                 results.append(AvailableAward(date=travel_date, route=route, miles_required=miles))
-        except Exception:
+        except Exception as e:
+            logger.debug("Skipping card for %s->%s on %s: %s", route.origin, route.destination, travel_date, e)
             continue
 
     logger.info("Found %d award(s) for %s->%s on %s", len(results), route.origin, route.destination, travel_date)
@@ -155,12 +158,12 @@ def _parse_results(page, route: Route, travel_date: date) -> List[AvailableAward
 def _parse_miles(text: str) -> Optional[int]:
     if not text:
         return None
-    text = text.strip().replace(",", "")
-    m = re.search(r"(\d+)[Kk]", text)
+    text = text.strip()
+    # K/k suffix — e.g. "35K", "35k"
+    m = re.search(r"(\d[\d,]*)[ \t]*[Kk]\b", text)
     if m:
-        return int(m.group(1)) * 1000
-    m = re.search(r"(\d+)", text)
-    if m:
-        val = int(m.group(1))
-        return val if val > 100 else None  # ignore small numbers like seat counts
-    return None
+        return int(m.group(1).replace(",", "")) * 1000
+    # Plain numbers — pick the largest to avoid seat counts / page numbers
+    candidates = [int(n.replace(",", "")) for n in re.findall(r"\d[\d,]*", text)]
+    candidates = [c for c in candidates if c > 100]
+    return max(candidates) if candidates else None
