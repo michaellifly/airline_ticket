@@ -47,5 +47,7 @@ def _send(config: Config, text: str) -> None:
         )
         resp.raise_for_status()
         logger.info("Telegram message sent.")
+    except requests.HTTPError as e:
+        logger.error("Telegram send failed: HTTP %s", e.response.status_code)
     except requests.RequestException as e:
-        logger.error("Telegram send failed: %s", e)
+        logger.error("Telegram send failed: %s", type(e).__name__)

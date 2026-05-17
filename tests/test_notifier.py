@@ -28,9 +28,12 @@ def test_send_available_posts_to_telegram():
         miles_required=35000,
     )
     with patch("notifier.requests.post") as mock_post:
-        mock_post.return_value = MagicMock(raise_for_status=lambda: None)
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
         notifier.send_available(config, award)
     mock_post.assert_called_once()
+    mock_resp.raise_for_status.assert_called_once()
     payload = mock_post.call_args.kwargs["json"]
     assert payload["chat_id"] == "123"
     assert "CGO" in payload["text"]
@@ -43,12 +46,17 @@ def test_send_empty_posts_when_notify_on_empty_true():
     config = _make_config(notify_on_empty=True)
     route = Route("CGO", "JFK", "economy")
     with patch("notifier.requests.post") as mock_post:
-        mock_post.return_value = MagicMock(raise_for_status=lambda: None)
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
         notifier.send_empty(config, route, date(2026, 7, 1), date(2026, 7, 31), 6)
     mock_post.assert_called_once()
+    mock_resp.raise_for_status.assert_called_once()
     payload = mock_post.call_args.kwargs["json"]
     assert "CGO" in payload["text"]
     assert "JFK" in payload["text"]
+    assert "6 hours" in payload["text"]
+    assert "Jul" in payload["text"]
 
 
 def test_send_empty_skips_when_notify_on_empty_false():
@@ -57,6 +65,22 @@ def test_send_empty_skips_when_notify_on_empty_false():
     with patch("notifier.requests.post") as mock_post:
         notifier.send_empty(config, route, date(2026, 7, 1), date(2026, 7, 31), 6)
     mock_post.assert_not_called()
+
+
+def test_send_available_handles_none_miles():
+    config = _make_config()
+    award = AvailableAward(
+        date=date(2026, 7, 15),
+        route=Route("CGO", "JFK", "economy"),
+        miles_required=None,
+    )
+    with patch("notifier.requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
+        notifier.send_available(config, award)
+    payload = mock_post.call_args.kwargs["json"]
+    assert "unknown" in payload["text"]
 
 
 def test_send_available_logs_error_on_failure():
