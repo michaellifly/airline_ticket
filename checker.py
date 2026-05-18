@@ -1,15 +1,14 @@
 import logging
 import requests
 from dataclasses import dataclass
-from datetime import date
+from datetime import date, timedelta
 from typing import List, Optional
 
 from config_loader import Config, Route
 
 logger = logging.getLogger(__name__)
 
-# Availability codes that mean seats are available
-AVAILABLE_CODES = {"H", "L", "M"}  # High / Low / Medium
+AVAILABLE_CODES = {"H", "L", "M"}
 
 API_URL = "https://api.cathaypacific.com/afr/search/availability/en.{origin}.{dest}.{cabin}.CX.{adults}.{start}.{end}.json"
 
@@ -47,7 +46,7 @@ def _check_route(route: Route, date_start: date, date_end: date) -> List[Availab
 def _check_direct_route(route: Route, date_start: date, date_end: date) -> List[AvailableAward]:
     label = f"{route.origin}->{route.destination}"
     logger.info("Checking %s (%s to %s)", label, date_start, date_end)
-    available_dates = _fetch_available_dates(route.origin, route.destination, route.cabin, date_start, date_end)
+    available_dates = _fetch_available_dates(route.origin, route.destination, route.cabin, route.adults, date_start, date_end)
     if available_dates is None:
         return []
     results = [AvailableAward(date=d, route=route, miles_required=None) for d in sorted(available_dates)]
@@ -59,29 +58,35 @@ def _check_connecting_route(route: Route, date_start: date, date_end: date) -> L
     label = f"{route.origin}->{route.via}->{route.destination}"
     logger.info("Checking %s (%s to %s)", label, date_start, date_end)
 
-    leg1_dates = _fetch_available_dates(route.origin, route.via, route.cabin, date_start, date_end)
+    # Leg 1: origin → via, departing on the user's requested date
+    leg1_dates = _fetch_available_dates(route.origin, route.via, route.cabin, route.adults, date_start, date_end)
     if leg1_dates is None:
         return []
 
-    leg2_dates = _fetch_available_dates(route.via, route.destination, route.cabin, date_start, date_end)
+    # Leg 2: via → destination, departing the day AFTER leg 1
+    # (e.g. CGO departs Jul 25 afternoon, arrives HKG same evening,
+    #  HKG→JFK departs Jul 26 — so leg 2 date = leg 1 date + 1)
+    leg2_start = date_start + timedelta(days=1)
+    leg2_end = date_end + timedelta(days=1)
+    leg2_dates = _fetch_available_dates(route.via, route.destination, route.cabin, route.adults, leg2_start, leg2_end)
     if leg2_dates is None:
         return []
 
-    # Both legs must be available on the same date
-    both_available = sorted(leg1_dates & leg2_dates)
+    # A journey departing origin on date d requires via→dest available on d+1
+    both_available = sorted(d for d in leg1_dates if d + timedelta(days=1) in leg2_dates)
     results = [AvailableAward(date=d, route=route, miles_required=None) for d in both_available]
     logger.info("Found %d date(s) with both legs available for %s", len(results), label)
     return results
 
 
-def _fetch_available_dates(origin: str, destination: str, cabin: str,
+def _fetch_available_dates(origin: str, destination: str, cabin: str, adults: int,
                            date_start: date, date_end: date) -> Optional[set]:
     cabin_code = CABIN_MAP.get(cabin.lower(), "eco")
     url = API_URL.format(
         origin=origin,
         dest=destination,
         cabin=cabin_code,
-        adults=1,
+        adults=adults,
         start=date_start.strftime("%Y%m%d"),
         end=date_end.strftime("%Y%m%d"),
     )

@@ -10,6 +10,7 @@ class Route:
     destination: str
     cabin: str
     via: Optional[str] = None
+    adults: int = 1
 
 
 @dataclass
@@ -51,6 +52,7 @@ def load_config(path: str = "config.yaml") -> Config:
                 destination=r["destination"],
                 cabin=r["cabin"],
                 via=r.get("via"),
+                adults=int(r.get("adults", 1)),
             )
             for r in raw["routes"]
         ]
