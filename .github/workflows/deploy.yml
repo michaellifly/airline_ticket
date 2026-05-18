@@ -19,7 +19,7 @@ jobs:
           host: ${{ secrets.VM_HOST }}
           username: ${{ secrets.VM_USER }}
           key: ${{ secrets.VM_SSH_KEY }}
-          source: "*.py,requirements.txt,Dockerfile,docker-compose.yml"
+          source: "*.py,*.yaml,requirements.txt,Dockerfile,docker-compose.yml"
           target: /home/liyaozhen1991/airline_ticket/
 
       - name: Rebuild and restart container

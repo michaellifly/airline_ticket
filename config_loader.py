@@ -31,8 +31,15 @@ def load_config(path: str = "config.yaml") -> Config:
         with open(path) as f:
             raw = yaml.safe_load(f)
     except FileNotFoundError:
-        raise SystemExit(f"ERROR: config.yaml not found at '{path}'. "
-                         "Copy config.yaml.example to config.yaml and fill in your values.")
+        raise SystemExit(f"ERROR: config.yaml not found at '{path}'.")
+
+    secrets_path = path.replace("config.yaml", "config.secrets.yaml")
+    try:
+        with open(secrets_path) as f:
+            secrets = yaml.safe_load(f) or {}
+        raw = {**raw, **{k: v for k, v in secrets.items() if v is not None}}
+    except FileNotFoundError:
+        pass  # secrets file is optional; values may already be in main config
 
     if raw is None:
         raise SystemExit(f"ERROR: config.yaml at '{path}' is empty.")

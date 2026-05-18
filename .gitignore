@@ -1,5 +1,5 @@
 .claude/settings.local.json
-config.yaml
+config.secrets.yaml
 .worktrees/
 __pycache__/
 *.pyc
