@@ -1,5 +1,13 @@
 # CLAUDE.md
 
+## Personal Context
+
+@E:\GT_Repo\context-infrastruture\context-infrastructure\rules\SOUL.md
+@E:\GT_Repo\context-infrastruture\context-infrastructure\rules\USER.md
+@E:\GT_Repo\context-infrastruture\context-infrastructure\rules\COMMUNICATION.md
+@E:\GT_Repo\context-infrastruture\context-infrastructure\rules\WORKSPACE.md
+@E:\GT_Repo\context-infrastruture\context-infrastructure\contexts\memory\OBSERVATIONS.md
+
 This file provides guidance to Claude Code (claude.ai/code) when working with code in this repository.
 
 ## What This Project Does
