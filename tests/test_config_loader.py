@@ -35,6 +35,37 @@ def test_load_valid_config(tmp_path):
     assert config.telegram_chat_id == "456"
     assert config.headless is True
 
+def test_load_multiple_explicit_connecting_routes(tmp_path):
+    cfg_file = tmp_path / "config.yaml"
+    cfg_file.write_text(
+        VALID_YAML.replace(
+            """routes:
+  - origin: CGO
+    destination: JFK
+    cabin: economy
+""",
+            """routes:
+  - origin: CGO
+    destination: JFK
+    via: HKG
+    cabin: economy
+    adults: 2
+  - origin: CAN
+    destination: JFK
+    via: HKG
+    cabin: economy
+    adults: 2
+""",
+        )
+    )
+
+    config = load_config(str(cfg_file))
+
+    assert config.routes == [
+        Route(origin="CGO", destination="JFK", cabin="economy", via="HKG", adults=2),
+        Route(origin="CAN", destination="JFK", cabin="economy", via="HKG", adults=2),
+    ]
+
 def test_missing_config_file_exits():
     with pytest.raises(SystemExit):
         load_config("/nonexistent/config.yaml")

@@ -4,6 +4,11 @@ routes:
     via: HKG
     cabin: economy
     adults: 2
+  - origin: CGO
+    destination: SEA
+    via: HKG
+    cabin: economy
+    adults: 2
 
 dates:
   start: "2026-07-22"

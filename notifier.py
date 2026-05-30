@@ -61,8 +61,9 @@ def send_empty(config: Config, route: Route, date_start: date, date_end: date, i
         return
     start_str = date_start.strftime('%b %d').lstrip('0').replace(' 0', ' ')
     end_str = date_end.strftime('%b %d').lstrip('0').replace(' 0', ' ')
+    via = f" via {route.via}" if route.via else ""
     text = (
-        f"No award space found for {route.origin} → {route.destination} "
+        f"No award space found for {route.origin}{via} → {route.destination} "
         f"({start_str}–{end_str}). "
         f"Next check in {interval_hours} hours."
     )

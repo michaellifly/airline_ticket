@@ -106,8 +106,8 @@ def test_connecting_route_returns_dates_where_both_legs_available():
     ]
     leg2 = [
         {"date": "20260722", "availability": "H"},
-        {"date": "20260723", "availability": "NA"},
-        {"date": "20260724", "availability": "H"},
+        {"date": "20260723", "availability": "H"},
+        {"date": "20260724", "availability": "NA"},
     ]
     responses = [_api_response(leg1), _api_response(leg2)]
     with patch("checker.requests.get", side_effect=responses):
@@ -121,7 +121,7 @@ def test_connecting_route_returns_dates_where_both_legs_available():
 def test_connecting_route_returns_empty_when_no_overlap():
     route = Route("CGO", "JFK", "economy", via="HKG")
     leg1 = [{"date": "20260722", "availability": "H"}]
-    leg2 = [{"date": "20260723", "availability": "H"}]
+    leg2 = [{"date": "20260724", "availability": "H"}]
     with patch("checker.requests.get", side_effect=[_api_response(leg1), _api_response(leg2)]):
         results = _check_route(route, date(2026, 7, 1), date(2026, 7, 31))
     assert results == []

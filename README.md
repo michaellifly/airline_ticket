@@ -36,6 +36,12 @@ routes:
     destination: JFK
     via: HKG       # optional connecting airport
     cabin: economy # economy | business | first
+    adults: 2
+  - origin: CAN
+    destination: JFK
+    via: HKG
+    cabin: economy
+    adults: 2
 
 dates:
   start: "2026-07-01"
@@ -49,6 +55,8 @@ notify_on_empty: true   # send a message when no seats found
 playwright:
   headless: true
 ```
+
+Add one `routes:` item for each origin/via/destination combination you want to monitor. `via` is optional; omit it for direct flights.
 
 **`config.secrets.yaml`** — never committed, copy from example and fill in:
 

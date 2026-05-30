@@ -90,6 +90,19 @@ def test_send_empty_posts_when_notify_on_empty_true():
     assert "Jul" in payload["text"]
 
 
+def test_send_empty_includes_connecting_airport():
+    config = _make_config(notify_on_empty=True)
+    route = Route("CGO", "JFK", "economy", via="HKG")
+    with patch("notifier.requests.post") as mock_post:
+        mock_resp = MagicMock()
+        mock_resp.raise_for_status.return_value = None
+        mock_post.return_value = mock_resp
+        notifier.send_empty(config, route, date(2026, 7, 1), date(2026, 7, 31), 6)
+    payload = mock_post.call_args.kwargs["json"]
+    assert "CGO via HKG" in payload["text"]
+    assert "JFK" in payload["text"]
+
+
 def test_send_empty_skips_when_notify_on_empty_false():
     config = _make_config(notify_on_empty=False)
     route = Route("CGO", "JFK", "economy")

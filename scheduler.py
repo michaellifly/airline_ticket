@@ -14,6 +14,10 @@ logger = logging.getLogger(__name__)
 _TELEGRAM_BASE = "https://api.telegram.org/bot{token}"
 
 
+def _route_key(route):
+    return (route.origin, route.via, route.destination, route.cabin, route.adults)
+
+
 def _poll_commands(config: Config, job_fn) -> None:
     logger.info("Command polling thread started")
     base = _TELEGRAM_BASE.format(token=config.telegram_bot_token)
@@ -74,11 +78,11 @@ def start(config: Config) -> None:
 
         route_hits = {}
         for award in results:
-            key = (award.route.origin, award.route.destination)
+            key = _route_key(award.route)
             route_hits.setdefault(key, []).append(award)
 
         for route in config.routes:
-            key = (route.origin, route.destination)
+            key = _route_key(route)
             awards = route_hits.get(key, [])
             if awards:
                 for award in awards:
