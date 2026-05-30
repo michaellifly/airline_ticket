@@ -9,7 +9,16 @@ routes:
     via: HKG
     cabin: economy
     adults: 2
-
+  - origin: CGO
+    destination: LAX
+    via: HKG
+    cabin: economy
+    adults: 2
+  - origin: CGO
+    destination: BOS
+    via: HKG
+    cabin: economy
+    adults: 2
 dates:
   start: "2026-07-22"
   end: "2026-08-01"

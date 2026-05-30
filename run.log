@@ -1,0 +1,20 @@
+2026-05-29 22:33:02 INFO     __main__: Loading configuration...
+2026-05-29 22:33:02 INFO     __main__: Monitoring 3 route(s) from 2026-07-22 to 2026-08-01, checking every 6 hour(s).
+2026-05-29 22:33:02 INFO     scheduler: Command polling thread started
+2026-05-29 22:33:02 INFO     scheduler: Polling supervisor started (thread: cmd-poll)
+2026-05-29 22:33:02 INFO     apscheduler.scheduler: Adding job tentatively -- it will be properly scheduled when the scheduler starts
+2026-05-29 22:33:02 INFO     scheduler: === Award check run starting ===
+2026-05-29 22:33:02 INFO     checker: Checking CGO->HKG->JFK (2026-07-22 to 2026-08-01)
+2026-05-29 22:33:02 INFO     checker: Found 1 date(s) with both legs available for CGO->HKG->JFK
+2026-05-29 22:33:02 INFO     checker: Checking CGO->HKG->SEA (2026-07-22 to 2026-08-01)
+2026-05-29 22:33:03 INFO     checker: Found 0 date(s) with both legs available for CGO->HKG->SEA
+2026-05-29 22:33:03 INFO     checker: Checking CGO->HKG->LAX (2026-07-22 to 2026-08-01)
+2026-05-29 22:33:03 INFO     checker: Found 0 date(s) with both legs available for CGO->HKG->LAX
+2026-05-29 22:33:04 INFO     notifier: Telegram message sent.
+2026-05-29 22:33:04 INFO     notifier: Telegram message sent.
+2026-05-29 22:33:05 INFO     notifier: Telegram message sent.
+2026-05-29 22:33:05 INFO     scheduler: === Run complete — 1 award(s) found ===
+2026-05-29 22:33:05 INFO     scheduler: Scheduler running. Next check in 6 hour(s). Ctrl+C to stop.
+2026-05-29 22:33:05 INFO     apscheduler.scheduler: Added job "start.<locals>.job" to job store "default"
+2026-05-29 22:33:05 INFO     apscheduler.scheduler: Scheduler started
+2026-05-29 22:33:13 WARNING  scheduler: Command poll error: 409 Client Error: Conflict for url: https://api.telegram.org/bot8954809469:AAFEC0clUupiWNvKTw5MSBFZTY4XTqhUNY8/getUpdates?timeout=20 — retrying in 10s
